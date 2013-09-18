@@ -35,6 +35,11 @@ object Projects extends Table[Project]("PROJECT") {
   def company = column[Long]("company", O.Nullable)
   def material = column[Long]("material", O.Nullable)
 
+  def fkCompany = foreignKey("company_fk", company, Companies)(_.id)
+  def fkMaterial = foreignKey("material_fk", material, Materials)(_.id)
+
+  // def idx = index("idx_project_company", company)
+
 
   def * = id.? ~ name ~ end_date.? ~ order ~ done_parts ~ mat_counter ~ company.? ~ material.? <>(Project.apply _, Project.unapply _)
 
@@ -47,12 +52,12 @@ object Projects extends Table[Project]("PROJECT") {
    * Retrieve from the id
    * @param id
    */
-  def findById(id: Long)(implicit s:Session): Option[Project] =
-      Projects.byId(id).firstOption
+  def findById(id: Long)(implicit s:Session): Project =
+      Projects.byId(id).first
 
 
-  def findByName(name: String)(implicit s: Session): Option[Project] =
-  	  Projects.byName(name).firstOption 
+  def findByName(name: String)(implicit s: Session): Project =
+  	  Projects.byName(name).first 
   /**
    * Count all
    */
@@ -74,7 +79,7 @@ object Projects extends Table[Project]("PROJECT") {
    * @param filter
    */
   def list(page: Int = 0, pageSize: Int = 10, orderBy: Int = 1, filter: String = "%")(implicit s:Session): 
-            Page[(Project, Option[Material], Option[Company])] = {
+            Page[(Project, Material, Company)] = {
 
     val offset = pageSize * page
     val query =
@@ -83,13 +88,12 @@ object Projects extends Table[Project]("PROJECT") {
         (project, material) <- Projects leftJoin Materials on (_.material === _.id)
         if project.name.toLowerCase like filter.toLowerCase()
       }
-      yield (project, material.id.?, company.name.?))
+      yield (project, material, company))
         .drop(offset)
         .take(pageSize)
 
     val totalRows = count(filter)
-    val result = query.list.map(row => (row._1, row._2.map(value => Material(Option(value))), 
-    	row._3.map(value => Company(Option(value)))))
+    val result = query.list.map(row => (row._1, row._2, row._3))
 
     Page(result, page, offset, totalRows)
   }
@@ -120,20 +124,16 @@ object Projects extends Table[Project]("PROJECT") {
     Projects.where(_.id === id).delete
   }
 
-  def nameToId(name: String)(implicit s:Session): Long = {
-  	val p = Projects.findByName(name)
-    val id = p.id 
+  def nameToId(name: String)(implicit s:Session): Option[Long] = {
+    Projects.findByName(name).id
   }
 
   def findDoneParts(id: Long)(implicit s:Session): Int = {
-    val p = Projects.findById(id)
-    val done = p.done_parts
+    Projects.findById(id).done_parts
   }
 
-  def findEndDate(id: Long)(implicit s:Session): Date = {
-    val p = Projects.findById(id)
-    val end = p.end_date
-
+  def findEndDate(id: Long)(implicit s:Session): Option[Date] = {
+    Projects.findById(id).end_date
   } 
 
 

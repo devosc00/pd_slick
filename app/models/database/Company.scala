@@ -43,7 +43,7 @@ def insert(company: Company)(implicit s:Session){
 val byId = createFinderBy(_.id)
 
 
-def findById(id: Long)(implicit s:Session): Option[Company] =
-      Companies.byId(id).firstOption
+def findById(id: Long)(implicit s:Session): Company =
+      Companies.byId(id).first
 
 }
